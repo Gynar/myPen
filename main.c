@@ -13,6 +13,51 @@
 
 #define PORT 5683
 
+typedef enum tag_comtype_t{
+	SEARCH_PAIR,
+	READY_SIGN,
+	RECV_DATA
+}comtype_t;
+
+typedef struct tag_argSock_t{
+	int m_fd;
+	comtype_t m_cmd;
+}argSock_t;
+
+void* c_thread(void* arg){
+	int n, rc, fd;
+	comtype_t cmd;
+
+	struct sockaddr_in cliaddr;
+
+	uint8_t buf[4096];
+	socklen_t len;
+	coap_packet_t pkt;
+	
+	fd = ((argSock_t*)arg)->m_fd;
+	cmd = ((argSock_t*)arg)->m_cmd;
+
+	len = sizeof(cliaddr);
+	n = recvform(fd, buf, sizeof(buf), 0, (struct sockaddr*)&cliaddr, &len);
+	rc = coap_parse(&pkt, buf, n);
+
+	if(!rc)
+		printf("Bad packet rc=%d\n", rc);
+	else{
+		size_t rsplen = sizeof(buf);
+		coap_packet_t rsppkt;
+
+		coap_handle_req(&scratch_buf, &pkt &rsppkt);
+
+		rc = coap_build(buf, &rsplen, &rsppkt);
+		if(!rc)
+			printf("coap_build failed rc=%d\n", rc);
+		else{
+			sendto(fd, buf, rsplen, 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int fd;
@@ -94,4 +139,3 @@ int main(int argc, char **argv)
         }
     }
 }
-
