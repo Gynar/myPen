@@ -25,9 +25,9 @@ typedef struct tag_argSock_t{
 }argSock_t;
 
 // thread global bar
-
+bool b_thdone;
 // function for thead
-void* c_thread(void* arg){
+void* com_try(void* arg){
 	int n, rc, fd;
 	comtype_t cmd;
 
@@ -36,8 +36,10 @@ void* c_thread(void* arg){
 	uint8_t buf[4096];
 	uint8_t scratch_raw[4096];
 	coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
-	socklen_t len;
 	coap_packet_t pkt;
+	socklen_t len;
+	coap_packet_t rsppkt;
+	size_t rsplen;
 	
 	fd = ((argSock_t*)arg)->m_fd;
 	cmd = ((argSock_t*)arg)->m_cmd;
@@ -49,17 +51,29 @@ void* c_thread(void* arg){
 	if(!rc)
 		printf("Bad packet rc=%d\n", rc);
 	else{
-		size_t rsplen = sizeof(buf);
-		coap_packet_t rsppkt;
+		switch(cmd){
+		case SEARCH_PAIR:
 
-		coap_handle_req(&scratch_buf, &pkt, &rsppkt);
+			rsplen = sizeof(buf);
 
-		rc = coap_build(buf, &rsplen, &rsppkt);
-		if(!rc)
-			printf("coap_build failed rc=%d\n", rc);
-		else{
-			sendto(fd, buf, rsplen, 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
+			coap_handle_req(&scratch_buf, &pkt, &rsppkt);
+			rc = coap_build(buf, &rsplen, &rsppkt);
+			if(!rc)
+				printf("coap_build failed rc=%d\n", rc);
+			else{
+				sendto(fd, buf, rsplen, 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
+			}
+
+			break;
+		case READY_SIGN:
+			break;
+		case RECV_DATA:
+			break;
+		default:
+			printf("Undefined Command : check argument\n");
+			break;
 		}
+
 	}
 }
 
@@ -68,10 +82,11 @@ int main(int argc, char **argv){
 	int fd;
 	struct sockaddr_in servaddr;
 	// thread var
-		
-
-
-
+	pthread_t p_thread;
+	pthread_attr_t p_attr;
+	int thr_id;
+	int thr_st;	
+	argSock_t thr_arg;
 
 	// socket establishing
 		// create socket
@@ -85,21 +100,44 @@ int main(int argc, char **argv){
 	bind(fd,(struct sockaddr *)&servaddr, sizeof(servaddr));
 		// endpoint setup
 	endpoint_setup();
-		
+	// thread arg set
+	thr_arg.m_fd = fd;
+	// thread attr set : detach attr
+	pthread_attr_init(&p_attr);
+	pthread_attr_setdetachstate(&p_attr, PTHREAD_CREATE_DETACHED);
+
 	// my program loop
 	for(;;){
 		
 		// connection check
+		thr_arg.m_cmd = SEARCH_PAIR;
 		while(1){
+			thr_id = pthread_create(&p_thread, &p_attr, com_try, (void*)&thr_arg);
+			if(thr_id < 0){
+				perror("connection check : thread create error");
+				exit(0);
+			}
 		}
 		// create png file
 		while(1){
 		}
 		// send communication ready sign
+		thr_arg.m_cmd = READY_SIGN;
 		while(1){
+			thr_id = pthread_create(&p_thread, &p_attr, com_try, (void*)&thr_arg);
+			if(thr_id < 0){
+				perror("connection ready : thread create error");
+				exit(0);
+			}
 		}
 		// active communication loop
+		thr_arg.m_cmd = RECV_DATA;
 		while(1){
+			thr_id = pthread_create(&p_thread, &p_attr, com_try, (void*)&thr_arg);
+			if(thr_id < 0){
+				perror("connection ready : thread create error");
+				exit(0);
+			}
 		}
 	}
 }
