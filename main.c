@@ -34,23 +34,6 @@ int main(int argc, char **argv)
 	bind(fd,(struct sockaddr *)&servaddr, sizeof(servaddr));
 	
 	endpoint_setup();
-	
-	// my program loop
-	for(;;){
-		
-		// connection check
-		while(1){
-		}
-		// create png file
-		while(1){
-		}
-		// send communication ready sign
-		while(1){
-		}
-		// active communication loop
-		while(1){
-		}
-	}
 
 	while(1)
 	{
@@ -59,11 +42,10 @@ int main(int argc, char **argv)
 		coap_packet_t pkt;
 
 		n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&cliaddr, &len);
-	#ifdef DEBUG
+	
 		printf("Received: ");
 		coap_dump(buf, n, true);
 		printf("\n");
-	#endif
 
 		if (0 != (rc = coap_parse(&pkt, buf, n)))
 			printf("Bad packet rc=%d\n", rc);
@@ -71,23 +53,21 @@ int main(int argc, char **argv)
         	{
 			size_t rsplen = sizeof(buf);
 			coap_packet_t rsppkt;
-#ifdef DEBUG
+
             coap_dumpPacket(&pkt);
-#endif
+
             coap_handle_req(&scratch_buf, &pkt, &rsppkt);
 
             if (0 != (rc = coap_build(buf, &rsplen, &rsppkt)))
                 printf("coap_build failed rc=%d\n", rc);
             else
             {
-#ifdef DEBUG
+
                 printf("Sending: ");
                 coap_dump(buf, rsplen, true);
                 printf("\n");
-#endif
-#ifdef DEBUG
+
                 coap_dumpPacket(&rsppkt);
-#endif
 
                 sendto(fd, buf, rsplen, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
             }
