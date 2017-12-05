@@ -1,5 +1,7 @@
 #include "my_coaphnd.h"
 
+extern unsigned int bell;
+
 void
 hnd_get_index(coap_context_t *ctx UNUSED_PARAM,
 	struct coap_resource_t *resource UNUSED_PARAM,
