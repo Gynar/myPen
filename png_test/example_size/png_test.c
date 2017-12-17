@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define TINYPNG_IMPLEMENTATION
 #include "tinypng.h"
 
 #define PIX(x,y,w) ((x)+(w)*(y))

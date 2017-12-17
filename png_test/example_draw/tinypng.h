@@ -81,6 +81,7 @@
 #define TP_ATLAS_EMPTY_COLOR        0x000000FF
 
 #include <stdint.h>
+#include <limits.h>
 
 typedef struct tpPixel tpPixel;
 typedef struct tpImage tpImage;
@@ -261,6 +262,7 @@ static char* tpPtr( tpState* s )
 
 static uint64_t tpPeakBits( tpState* s, int num_bits_to_read )
 {
+	int i;
 	if ( s->count < num_bits_to_read )
 	{
 		if ( s->bits_left > s->last_bits )
@@ -274,7 +276,7 @@ static uint64_t tpPeakBits( tpState* s, int num_bits_to_read )
 		{
 			TP_ASSERT( s->bits_left <= 3 * 8 );
 			int bytes = s->bits_left / 8;
-			for ( int i = 0; i < bytes; ++i )
+			for (i = 0; i < bytes; ++i )
 				s->bits |= (uint64_t)(s->final_bytes[ i ]) << (i * 8);
 			s->count += s->bits_left;
 		}
@@ -339,7 +341,7 @@ static uint32_t tpRev16( uint32_t a )
 static int tpBuild( tpState* s, uint32_t* tree, uint8_t* lens, int sym_count )
 {
 	int n, codes[ 16 ], first[ 16 ], counts[ 16 ] = { 0 };
-
+	int i;
 	// Frequency count
 	for ( n = 0; n < sym_count; n++ ) counts[ lens[ n ] ]++;
 
@@ -352,7 +354,7 @@ static int tpBuild( tpState* s, uint32_t* tree, uint8_t* lens, int sym_count )
 	}
 
 	if ( s ) memset( s->lookup, 0, sizeof( 512 * sizeof( uint32_t ) ) );
-	for ( int i = 0; i < sym_count; ++i )
+	for (i = 0; i < sym_count; ++i )
 	{
 		int len = lens[ i ];
 
@@ -433,26 +435,26 @@ static int tpDecode( tpState* s, uint32_t* tree, int hi )
 static int tpDynamic( tpState* s )
 {
 	uint8_t lenlens[ 19 ] = { 0 };
-
+	int n, i;
 	int nlit = 257 + tpReadBits( s, 5 );
 	int ndst = 1 + tpReadBits( s, 5 );
 	int nlen = 4 + tpReadBits( s, 4 );
 
-	for ( int i = 0 ; i < nlen; ++i )
+	for (i = 0 ; i < nlen; ++i )
 		lenlens[ g_tpPermutationOrder[ i ] ] = (uint8_t)tpReadBits( s, 3 );
 
 	// Build the tree for decoding code lengths
 	s->nlen = tpBuild( 0, s->len, lenlens, 19 );
 	uint8_t lens[ 288 + 32 ];
 
-	for ( int n = 0; n < nlit + ndst; )
+	for (n = 0; n < nlit + ndst; )
 	{
 		int sym = tpDecode( s, s->len, s->nlen );
 		switch ( sym )
 		{
-		case 16: for ( int i =  3 + tpReadBits( s, 2 ); i; --i, ++n ) lens[ n ] = lens[ n - 1 ]; break;
-		case 17: for ( int i =  3 + tpReadBits( s, 3 ); i; --i, ++n ) lens[ n ] = 0; break;
-		case 18: for ( int i = 11 + tpReadBits( s, 7 ); i; --i, ++n ) lens[ n ] = 0; break;
+		case 16: for (i =  3 + tpReadBits( s, 2 ); i; --i, ++n ) lens[ n ] = lens[ n - 1 ]; break;
+		case 17: for (i =  3 + tpReadBits( s, 3 ); i; --i, ++n ) lens[ n ] = 0; break;
+		case 18: for (i = 11 + tpReadBits( s, 7 ); i; --i, ++n ) lens[ n ] = 0; break;
 		default: lens[ n++ ] = (uint8_t)sym; break;
 		}
 	}
@@ -509,6 +511,7 @@ tp_err:
 // 3.2.3
 int tpInflate( void* in, int in_bytes, void* out, int out_bytes )
 {
+	int i;
 	tpState* s = (tpState*)TP_CALLOC( 1, sizeof( tpState ) );
 	s->bits = 0;
 	s->count = 0;
@@ -521,7 +524,7 @@ int tpInflate( void* in, int in_bytes, void* out, int out_bytes )
 	s->last_bits = ((in_bytes - first_bytes) & 3) * 8;
 	s->final_bytes = (char*)in + in_bytes - s->last_bits;
 
-	for ( int i = 0; i < first_bytes; ++i )
+	for (i = 0; i < first_bytes; ++i )
 		s->bits |= (uint64_t)(((uint8_t*)in)[ i ]) << (i * 8);
 	s->count = first_bytes * 8;
 
@@ -699,18 +702,19 @@ static void tpSaveHeader( tpSavePngData* s, tpImage* img )
 
 static long tpSaveData( tpSavePngData* s, tpImage* img, long dataPos )
 {
+	int x, y;
 	tpBeginChunk( s, "IDAT", 0 );
 	tpPut8( s, 0x08 ); // zlib compression method
 	tpPut8( s, 0x1D ); // zlib compression flags
 	tpPutBits( s, 3, 3 ); // zlib last block + fixed dictionary
 
-	for ( int y = 0; y < img->h; ++y )
+	for (y = 0; y < img->h; ++y )
 	{
 		tpPixel *row = &img->pix[ y * img->w ];
 		tpPixel prev = tpMakePixelA( 0, 0, 0, 0 );
 
 		tpEncodeByte( s, 1 ); // sub filter
-		for ( int x = 0; x < img->w; ++x )
+		for (x = 0; x < img->w; ++x )
 		{
 			tpEncodeByte( s, row[ x ].r - prev.r );
 			tpEncodeByte( s, row[ x ].g - prev.g );
@@ -811,9 +815,9 @@ static int tpUnfilter( int w, int h, int bpp, uint8_t* raw )
 {
 	int len = w * bpp;
 	uint8_t *prev = raw;
-	int x;
+	int x, y;
 
-	for ( int y = 0; y < h; y++, prev = raw, raw += len )
+	for (y = 0; y < h; y++, prev = raw, raw += len )
 	{
 #define FILTER_LOOP( A, B ) for ( x = 0 ; x < bpp; x++ ) raw[ x ] += A; for ( ; x < len; x++ ) raw[ x ] += B; break
 		switch ( *raw++ )
@@ -833,12 +837,13 @@ static int tpUnfilter( int w, int h, int bpp, uint8_t* raw )
 
 static void tpConvert( int bpp, int w, int h, uint8_t* src, tpPixel* dst )
 {
-	for ( int y = 0; y < h; y++ )
+	int x, y;
+	for (y = 0; y < h; y++ )
 	{
 		// skip filter byte
 		src++;
 
-		for ( int x = 0; x < w; x++, src += bpp )
+		for (x = 0; x < w; x++, src += bpp )
 		{
 			switch ( bpp )
 			{
@@ -861,12 +866,13 @@ static uint8_t tpGetAlphaForIndexedImage( int index, const uint8_t* trns, uint32
 
 static void tpDepalette( int w, int h, uint8_t* src, tpPixel* dst, const uint8_t* plte, const uint8_t* trns, uint32_t trns_len )
 {
-	for ( int y = 0; y < h; ++y )
+	int x, y;
+	for (y = 0; y < h; ++y )
 	{
 		// skip filter byte
 		++src;
 
-		for ( int x = 0; x < w; ++x, ++src )
+		for (x = 0; x < w; ++x, ++src )
 		{
 			int c = *src;
 			uint8_t r = plte[ c * 3 ];
@@ -890,6 +896,7 @@ static int tpOutSize( tpImage* img, int bpp )
 
 tpImage tpLoadPNGMem( const void* png_data, int png_length )
 {
+	const uint8_t* idat;
 	const char* sig = "\211PNG\r\n\032\n";
 	const uint8_t* ihdr, *first, *plte, *trns;
 	int bit_depth, color_type, bpp, w, h, pix_bytes;
@@ -950,7 +957,7 @@ tpImage tpLoadPNGMem( const void* png_data, int png_length )
 
 	// Compute length of the DEFLATE stream through IDAT chunk data sizes
 	datalen = 0;
-	for ( const uint8_t* idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
+	for (idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
 	{
 		uint32_t len = tpGetChunkByteLength( idat );
 		datalen += len;
@@ -960,7 +967,7 @@ tpImage tpLoadPNGMem( const void* png_data, int png_length )
 	png.p = first;
 	data = (uint8_t*)TP_ALLOC( datalen );
 	offset = 0;
-	for ( const uint8_t* idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
+	for (idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
 	{
 		uint32_t len = tpGetChunkByteLength( idat );
 		TP_MEMCPY( data + offset, idat, len );
@@ -1020,12 +1027,13 @@ tpIndexedImage tpLoadIndexedPNG( const char* fileName )
 
 static void tpUnpackIndexedRows( int w, int h, uint8_t* src, uint8_t* dst )
 {
-	for ( int y = 0; y < h; ++y )
+	int x, y;
+	for (y = 0; y < h; ++y )
 	{
 		// skip filter byte
 		++src;
 
-		for ( int x = 0; x < w; ++x, ++src )
+		for (x = 0; x < w; ++x, ++src )
 		{
 			*dst++ = *src;
 		}
@@ -1034,7 +1042,8 @@ static void tpUnpackIndexedRows( int w, int h, uint8_t* src, uint8_t* dst )
 
 void tpUnpackPalette( tpPixel* dst, const uint8_t* plte, int plte_len, const uint8_t* trns, int trns_len )
 {
-	for ( int i = 0; i < plte_len * 3; i += 3 )
+	int i;
+	for (i = 0; i < plte_len * 3; i += 3 )
 	{
 		unsigned char r = plte[ i ];
 		unsigned char g = plte[ i + 1 ];
@@ -1047,6 +1056,7 @@ void tpUnpackPalette( tpPixel* dst, const uint8_t* plte, int plte_len, const uin
 
 tpIndexedImage tpLoadIndexedPNGMem( const void *png_data, int png_length )
 {
+	const uint8_t* idat;
 	const char* sig = "\211PNG\r\n\032\n";
 	const uint8_t* ihdr, *first, *plte, *trns;
 	int bit_depth, color_type, bpp, w, h, pix_bytes;
@@ -1099,7 +1109,7 @@ tpIndexedImage tpLoadIndexedPNGMem( const void *png_data, int png_length )
 
 	// Compute length of the DEFLATE stream through IDAT chunk data sizes
 	datalen = 0;
-	for ( const uint8_t* idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
+	for (idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
 	{
 		uint32_t len = tpGetChunkByteLength( idat );
 		datalen += len;
@@ -1109,7 +1119,7 @@ tpIndexedImage tpLoadIndexedPNGMem( const void *png_data, int png_length )
 	png.p = first;
 	data = (uint8_t*)TP_ALLOC( datalen );
 	offset = 0;
-	for ( const uint8_t* idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
+	for (idat = tpFind( &png, "IDAT", 0 ); idat; idat = tpChunk( &png, "IDAT", 0 ) )
 	{
 		uint32_t len = tpGetChunkByteLength( idat );
 		TP_MEMCPY( data + offset, idat, len );
@@ -1144,6 +1154,7 @@ tp_err:
 
 tpImage tpDepaletteIndexedImage( tpIndexedImage* img )
 {
+	int x, y;
 	tpImage out = { 0 };
 	out.w = img->w;
 	out.h = img->h;
@@ -1152,9 +1163,9 @@ tpImage tpDepaletteIndexedImage( tpIndexedImage* img )
 	tpPixel* dst = out.pix;
 	uint8_t* src = img->pix;
 
-	for (int y = 0; y < out.h; ++y)
+	for (y = 0; y < out.h; ++y)
 	{
-		for (int x = 0; x < out.w; ++x)
+		for (x = 0; x < out.w; ++x)
 		{
 			int index = *src++;
 			tpPixel p = img->palette[index];
@@ -1213,13 +1224,14 @@ typedef struct
 
 static tpAtlasNode* tpBestFit( int sp, const tpImage* png, tpAtlasNode* nodes )
 {
+	int i;
 	int bestVolume = INT_MAX;
 	tpAtlasNode *bestNode = 0;
 	int width = png->w;
 	int height = png->h;
 	int pngVolume = width * height;
 
-	for ( int i = 0; i < sp; ++i )
+	for (i = 0; i < sp; ++i )
 	{
 		tpAtlasNode *node = nodes + i;
 		int canContain = node->size.x >= width && node->size.y >= height;
@@ -1247,12 +1259,13 @@ static int tpPerimeterPred( tpIntegerImage* a, tpIntegerImage* b )
 
 void tpPremultiply( tpImage* img )
 {
+	int i;
 	int w = img->w;
 	int h = img->h;
 	int stride = w * sizeof( tpPixel );
 	uint8_t* data = (uint8_t*)img->pix;
 
-	for( int i = 0; i < (int)stride * h; i += sizeof( tpPixel ) )
+	for(i = 0; i < (int)stride * h; i += sizeof( tpPixel ) )
 	{
 		float a = (float)data[ i + 3 ] / 255.0f;
 		float r = (float)data[ i + 0 ] / 255.0f;
@@ -1269,11 +1282,12 @@ void tpPremultiply( tpImage* img )
 
 static void tpQSort( tpIntegerImage* items, int count )
 {
+	int i;
 	if ( count <= 1 ) return;
 
 	tpIntegerImage pivot = items[ count - 1 ];
 	int low = 0;
-	for ( int i = 0; i < count - 1; ++i )
+	for (i = 0; i < count - 1; ++i )
 	{
 		if ( tpPerimeterPred( items + i, &pivot ) )
 		{
@@ -1292,6 +1306,7 @@ static void tpQSort( tpIntegerImage* items, int count )
 
 tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int png_count, tpAtlasImage* imgs_out )
 {
+	int i, y, row;
 	float w0, h0, div, wTol, hTol;
 	int atlas_image_size, atlas_stride, sp;
 	void* atlas_pixels = 0;
@@ -1312,7 +1327,7 @@ tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int
 	TP_CHECK( images, "out of mem" );
 	TP_CHECK( nodes, "out of mem" );
 
-	for ( int i = 0; i < png_count; ++i )
+	for (i = 0; i < png_count; ++i )
 	{
 		const tpImage* png = pngs + i;
 		tpIntegerImage* image = images + i;
@@ -1335,7 +1350,7 @@ tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int
 	// Nodes represent empty space in the atlas. Placing a texture into the
 	// atlas involves splitting a node into two smaller pieces (or, if a
 	// perfect fit is found, deleting the node).
-	for ( int i = 0; i < png_count; ++i )
+	for (i = 0; i < png_count; ++i )
 	{
 		tpIntegerImage* image = images + i;
 		const tpImage* png = pngs + image->img_index;
@@ -1405,7 +1420,7 @@ tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int
 	TP_CHECK( atlas_image_size, "out of mem" );
 	memset( atlas_pixels, TP_ATLAS_EMPTY_COLOR, atlas_image_size );
 
-	for ( int i = 0; i < png_count; ++i )
+	for (i = 0; i < png_count; ++i )
 	{
 		tpIntegerImage* image = images + i;
 
@@ -1418,7 +1433,7 @@ tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int
 			int atlas_offset = min.x * sizeof( tpPixel );
 			int tex_stride = png->w * sizeof( tpPixel );
 
-			for ( int row = min.y, y = 0; row < max.y; ++row, ++y )
+			for (row = min.y, y = 0; row < max.y; ++row, ++y )
 			{
 				void* row_ptr = (char*)atlas_pixels + (row * atlas_stride + atlas_offset);
 				TP_MEMCPY( row_ptr, pixels + y * tex_stride, tex_stride );
@@ -1436,7 +1451,7 @@ tpImage tpMakeAtlas( int atlas_width, int atlas_height, const tpImage* pngs, int
 	wTol = w0 * div;
 	hTol = h0 * div;
 
-	for ( int i = 0; i < png_count; ++i )
+	for (i = 0; i < png_count; ++i )
 	{
 		tpIntegerImage* image = images + i;
 		tpAtlasImage* img_out = imgs_out + i;
@@ -1483,12 +1498,13 @@ tp_err:
 
 int tpDefaultSaveAtlas( const char* out_path_image, const char* out_path_atlas_txt, const tpImage* atlas, const tpAtlasImage* imgs, int img_count, const char** names )
 {
+	int i;
 	FILE* fp = fopen( out_path_atlas_txt, "wt" );
 	TP_CHECK( fp, "unable to open out_path_atlas_txt in tpDefaultSaveAtlas" );
 
 	fprintf( fp, "%s\n%d\n\n", out_path_image, img_count );
 
-	for ( int i = 0; i < img_count; ++i )
+	for (i = 0; i < img_count; ++i )
 	{
 		const tpAtlasImage* image = imgs + i;
 		const char* name = names ? names[ i ] : 0;

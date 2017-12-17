@@ -5,8 +5,9 @@
 #include <sys/types.h>	// opendir(), closedir(), readdir()
 #include <dirent.h>		// opendir(), closedir(), readdir()
 #include <sys/stat.h>	// lstat()
-#include <unistd.h>		// lstat()
+#include <unistd.h>		// lstat(), getpwd()
 
+#define TINYPNG_IMPLEMENTATION
 #include "tinypng.h"
 
 
@@ -29,7 +30,9 @@ typedef struct {
 	unsigned int pY;
 }pXY;
 
-char* nstd_iota(int, char*, int);
+char pwd_arg[100];
+
+//char* nstd_iota(int, char*, int);
 int fnameCmp(const void*, const void*);
 char* find_newName(void);
 
@@ -37,29 +40,28 @@ void dot(tpPixel*, uint8_t, uint8_t, uint8_t, uint8_t);
 void drawLine(tpImage* my_surf, pXY pA, pXY pB);
 //void append_newChar(char**, char*);
 
-char* nstd_itoa(int val, char * buf, int radix) {
-	char* p = buf;
-
-	while (val) {
-		if (radix <= 10)
-			*p++ = (val % radix) + '0';
-		else {
-			int t = val % radix;
-			if (t <= 9)
-				*p++ = t + '0';
-			else
-				*p++ = t - 10 + 'a';
-		}
-		val /= radix;
-	}
-
-	*p = '\0';
-	//reverse(buf);
-	return buf;
-}
+//char* nstd_itoa(int val, char * buf, int radix) {
+//	char* p = buf;
+//
+//	while (val) {
+//		if (radix <= 10)
+//			*p++ = (val % radix) + '0';
+//		else {
+//			int t = val % radix;
+//			if (t <= 9)
+//				*p++ = t + '0';
+//			else
+//				*p++ = t - 10 + 'a';
+//		}
+//		val /= radix;
+//	}
+//
+//	*p = '\0';
+//	//reverse(buf);
+//	return buf;
+//}
 int fnameCmp(const void* f1, const void* f2) {
-	int ret = strcmp((const char*)f1, (const char*)f2);
-	return ret;
+	return strcmp((char*)f1, (char*)f2);
 }
 char* find_newName(void) {
 	// common
@@ -68,7 +70,6 @@ char* find_newName(void) {
 	char** flist;
 	int flist_len, flist_cap;
 	char* my_fname;
-	char char_buf[10];
 	unsigned int my_idx;
 	DIR* dp = NULL;
 	struct dirent* entry = NULL;
@@ -77,61 +78,92 @@ char* find_newName(void) {
 	dp = opendir(STORAGE_DIR);
 	if (!dp) {
 		printf("cannot find the directory : \n\t%s\n", STORAGE_DIR);
-		return -1;
+		return NULL;
 	}
 
-	my_idx = 1;
 	flist_len = 0;
 	flist_cap = 8;
 	flist = (char**)malloc(sizeof(char*)*flist_cap);
 	my_fname = (char*)malloc(sizeof(char)*DEFAULT_LEN);
 	memset(my_fname, 0, DEFAULT_LEN);
-	memset(char_buf, 0, 10);
 	// new_file.png
-	strcat(my_fname, FILE_NAME);
-	strcat(my_fname, ".png");
-
+	snprintf(my_fname, DEFAULT_LEN, "%s(0).png", FILE_NAME);
+	
 	// get the file name list
+	printf("[ENTRY] \n");
 	while ((entry = readdir(dp))
 		!= NULL) {
-		lstat(entry->d_name, &detail);
-		if (!S_ISDIR(detail.st_mode)) {
+		char target[512] = {0};
+		snprintf(target, 512, "%s/%s", STORAGE_DIR, entry->d_name);
+		lstat(target, &detail);
+		printf("\t%20s", entry->d_name);
+
+		switch(detail.st_mode & S_IFMT){
+		case S_IFDIR:
+			printf("\t->DIR\n");
+			break;
+		case S_IFREG:
+			printf("\t->FILE\n");
 			*(flist + flist_len) = (char*)malloc(sizeof(char)*DEFAULT_LEN);
-			strcpy(*(flist + flist_len), entry->d_name));
+			memset(*(flist + flist_len), 0, sizeof(char)*DEFAULT_LEN);
+			snprintf(*(flist + flist_len), DEFAULT_LEN, "%s", entry->d_name);
 			flist_len++;
 			if (flist_len >= flist_cap) {
 				flist_cap *= 2;
 				flist = (char**)realloc(flist, sizeof(char*)*flist_cap);
 			}
+			break;
+		default:
+			printf("\t->others\n");
+			break;
 		}
 	}
 
-	// sort
-	qsort((char*)flist, flist_len, sizeof(char*), fnameCmp);
+	if(flist_len == 0)
+		goto first_file;
 
-	// check if we have already same name
-	m = 0;
+	// sort
+	// qsort(flist, flist_len, sizeof(flist[0]), fnameCmp);
+
+	// Bubble Sort 
 	for (n = 0; n < flist_len; n++) {
-		ret = strcmp(my_fname, flist[flist_len]);
+		for (m = 0; m < flist_len-(n+1); m++) {
+			if(strcmp(flist[m], flist[m+1]) > 0){
+				char char_tmp[DEFAULT_LEN] = {0};
+				strcpy(char_tmp, flist[m+1]);
+				memset(flist[m+1], 0, DEFAULT_LEN);
+				strcpy(flist[m+1], flist[m]);
+				memset(flist[m], 0, DEFAULT_LEN);	
+				strcpy(flist[m], char_tmp);
+			}
+		}
+	}
+
+	printf("[FILE LIST] \n");
+	for (n = 0; n < flist_len; n++)
+		printf("\t%s\n", flist[n]);
+	printf("\t\tFile Entry/Capacity : %4d/%4d\n", flist_len, flist_cap);
+	
+	// check if we have already same name
+	m = 0; my_idx = 1;
+	for (n = 0; n < flist_len; n++) {
+		ret = strcmp(my_fname, flist[n]);
 		if (!ret) {
-			m = 1;
 			memset(my_fname, 0, DEFAULT_LEN);
-			memset(char_buf, 0, 10);
-			// itoa
-			nstd_itoa(my_idx++, char_buf, 10);
-			// new_file(x).png
-			strcat(my_fname, FILE_NAME);
-			strcat(my_fname, "(");
-			strcat(my_fname, char_buf);
-			strcat(my_fname, ")");
-			strcat(my_fname, ".png");
+			snprintf(my_fname, DEFAULT_LEN, "%s(%d).png", FILE_NAME, my_idx++);
+			m = 1;
 		}
 		else
 			if (m)
 				break;
 	}
-
+first_file:
+	for(n = 0; n < flist_len; n++)
+		free(flist[n]);
+	free(flist);
 	closedir(dp);
+
+	printf("allocated new name : %s \n", my_fname);
 	return my_fname;
 }
 void dot(tpPixel* here, uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
@@ -234,7 +266,7 @@ void drawLine(tpImage* my_surf, pXY pA, pXY pB) {
 		nEnd = bY;
 	}
 
-	dot(my_surf->pix + P(aX, aY, my_surf->w), 0x00, 0xff, 0xff, 0xff);
+	dot(my_surf->pix + P(aX, aY, my_surf->w), 0xff, 0x00, 0x00, 0x00);
 	for (n = nBegin; n < nEnd; n++) {
 		if (pN < 0)
 			pN += cNeg;
@@ -247,9 +279,9 @@ void drawLine(tpImage* my_surf, pXY pA, pXY pB) {
 		}
 
 		if (isSteep)
-			dot(my_surf->pix + P(n, aY, my_surf->w), 0x00, 0xff, 0xff, 0xff);
+			dot(my_surf->pix + P(n, aY, my_surf->w), 0xff, 0x00, 0x00, 0x00);
 		else
-			dot(my_surf->pix + P(aX, n, my_surf->w), 0x00, 0xff, 0xff, 0xff);
+			dot(my_surf->pix + P(aX, n, my_surf->w), 0xff, 0x00, 0x00, 0x00);
 	}
 
 	return;
@@ -261,7 +293,7 @@ int main(int agrc, char** argv) {
 	// png manage
 	char* my_fname;
 	tpImage my_surf;
-	pXY pA = { 120, 120 };
+	pXY pA = { 370, 120 };
 	pXY pB = { 360, 360 };
 
 	my_surf.h = PNG_DH;
@@ -269,18 +301,24 @@ int main(int agrc, char** argv) {
 	my_surf.pix = (tpPixel*)malloc(sizeof(tpPixel)*PNG_DH*PNG_DW);
 	memset(my_surf.pix, 0, sizeof(tpPixel)*PNG_DH*PNG_DW);
 
-	drawLine(my_surf, pA, pB);
+	drawLine(&my_surf, pA, pB);
 
 	my_fname = find_newName();
-	ret = tpSavePNG(my_fname, &my_surf);
+	if(my_fname == NULL)
+		goto name_alloc_fail;
+		
+	getcwd(pwd_arg, 100);
+	strcat(pwd_arg, "/storage/");
+	strcat(pwd_arg, my_fname);
+	ret = tpSavePNG(pwd_arg, &my_surf);
 
-	free(my_surf.pix);
 	free(my_fname);
 
-	if (ret < 0) {
+	if (ret < 0)
 		printf("png creation fail... \n");
-		exit(1):
-	}
 
+name_alloc_fail:
+	free(my_surf.pix);
+	
 	return 0;
 }
