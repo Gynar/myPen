@@ -2,7 +2,6 @@
 
 time_t clock_offset;
 time_t my_clock_base = 0;
-struct coap_resource_t *time_resource = NULL;
 
 coap_async_state_t *async = NULL;
 
@@ -157,16 +156,36 @@ hnd_put_sensor(coap_context_t *ctx UNUSED_PARAM,
 	coap_resource_set_dirty(resource, NULL);
 
 	(void)coap_get_data(request, &size, &data);
-
-	if (size == 0) {
-		response->code = COAP_RESPONSE_CODE(400);
-	}
-	else {
+	
+	if(my_sensor_base == 0){
 		my_sensor_base = 1;
-		info("recived val : %s \n", data);
+		con_established = 1;
+	}
+	else{
+		if (size == 0) {
+			response->code = COAP_RESPONSE_CODE(400);
+		}
+		else {
+			recv_dat.Ax = 0;
+			recv_dat.Ay = 0;
+			recv_dat.Az = 0;
+			recv_dat.Gx = 0;
+			recv_dat.Gy = 0;
+			recv_dat.Gz = 0;
+			recv_dat.Fr = 0;
+			
+			Ax = (data[0] << 24) | (data[1]<<16) | (data[2]<<8) | data[3];
+			Ay = (data[4] << 24) | (data[5]<<16) | (data[6]<<8) | data[7];
+			Az = (data[8] << 24) | (data[9]<<16) | (data[10]<<8)| data[11];
+			Gx = (data[12]<< 24) | (data[13]<<16)| (data[14]<<8)| data[15];
+			Gy = (data[16]<< 24) | (data[17]<<16)| (data[18]<<8)| data[19];
+			Gz = (data[20]<< 24) | (data[21]<<16)| (data[22]<<8)| data[23];
+			Fr = (data[24]<< 24) | (data[25]<<16)| (data[26]<<8)| data[27];
+			
+			recv_dat.renewed = 1;
+		}
 	}
 }
-
 
 void
 hnd_get_async(coap_context_t *ctx,

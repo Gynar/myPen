@@ -1,44 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>	// qsort, abs
-#include <string.h>
-
-#include <sys/types.h>	// opendir(), closedir(), readdir()
-#include <dirent.h>		// opendir(), closedir(), readdir()
-#include <sys/stat.h>	// lstat()
-#include <unistd.h>		// lstat(), getpwd()
-
-#define TINYPNG_IMPLEMENTATION
-#include "tinypng.h"
-
-
-#define STORAGE_DIR "./storage"
-#define FILE_NAME "new_file"
-#define DEFAULT_LEN 40
-#define PNG_DH 640
-#define PNG_DW 640
-
-#define P(x,y,w) ((x)+(y)*(w))
-#define SWAP(a, b, type) do {  \
-		type temp;	\
-		temp = a;	\
-		a = b;		\
-		b = temp;	\
-	} while(0)
-
-typedef struct {
-	unsigned int pX;
-	unsigned int pY;
-}pXY;
-
-char pwd_arg[100];
-
-//char* nstd_iota(int, char*, int);
-int fnameCmp(const void*, const void*);
-char* find_newName(void);
-
-void dot(tpPixel*, uint8_t, uint8_t, uint8_t, uint8_t);
-void drawLine(tpImage* my_surf, pXY pA, pXY pB);
-//void append_newChar(char**, char*);
+#include "gpng_impl.h"
 
 //char* nstd_itoa(int val, char * buf, int radix) {
 //	char* p = buf;
@@ -60,9 +20,9 @@ void drawLine(tpImage* my_surf, pXY pA, pXY pB);
 //	//reverse(buf);
 //	return buf;
 //}
-int fnameCmp(const void* f1, const void* f2) {
-	return strcmp((char*)f1, (char*)f2);
-}
+//int fnameCmp(const void* f1, const void* f2) {
+//	return strcmp((char*)f1, (char*)f2);
+//}
 char* find_newName(void) {
 	// common
 	int m, n, ret;
@@ -190,7 +150,7 @@ void dot(tpPixel* here, uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
 //	+1 for pY, and pM = pN + 2*(dy-dx)
 //	if pN < 0
 //	pM = pN + 2*dy
-void drawLine(tpImage* my_surf, pXY pA, pXY pB) {
+void drawLine(tpImage* my_surf, tXY pA, tXY pB) {
 	int n, nBegin, nEnd;
 	int dx, dy;
 	int pN;
@@ -287,38 +247,4 @@ void drawLine(tpImage* my_surf, pXY pA, pXY pB) {
 	return;
 }
 
-int main(int agrc, char** argv) {
-	// common
-	int m, n, ret;
-	// png manage
-	char* my_fname;
-	tpImage my_surf;
-	pXY pA = { 370, 120 };
-	pXY pB = { 360, 360 };
 
-	my_surf.h = PNG_DH;
-	my_surf.w = PNG_DW;
-	my_surf.pix = (tpPixel*)malloc(sizeof(tpPixel)*PNG_DH*PNG_DW);
-	memset(my_surf.pix, 0, sizeof(tpPixel)*PNG_DH*PNG_DW);
-
-	drawLine(&my_surf, pA, pB);
-
-	my_fname = find_newName();
-	if(my_fname == NULL)
-		goto name_alloc_fail;
-		
-	getcwd(pwd_arg, 100);
-	strcat(pwd_arg, "/storage/");
-	strcat(pwd_arg, my_fname);
-	ret = tpSavePNG(pwd_arg, &my_surf);
-
-	free(my_fname);
-
-	if (ret < 0)
-		printf("png creation fail... \n");
-
-name_alloc_fail:
-	free(my_surf.pix);
-	
-	return 0;
-}
