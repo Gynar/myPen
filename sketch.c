@@ -1,19 +1,18 @@
 
 // 2017-11-24 created
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <signal.h>
-
+#include <siginal.h>
 #include <pthread.h>
-#include <unistd.h>
 
-#include "my_libcoap.h"
+#include "coap_impl.h"
 
 typedef struct{
 	int x;
@@ -21,22 +20,50 @@ typedef struct{
 	bool pushed;
 }point_t;
 
-typedef struct{
-	int Ax;
-	int Ay;
-	int Az;
-	int Gx;
-	int Gy;
-	int Gz;
-	int Fr;
-	bool renewed;
-}recv_dat_t;
-
 int quit;
 int quit_server;
 int timeout;
 bool con_established = 0;
-recv_dat_t recv_dat;
+
+void*
+	coap_server_service(void* arg);
+
+void*
+coap_server_service(void* arg) {
+	coap_context_t* ctx;
+	unsigned wait_ms;
+
+	ctx = libcoap_open();
+
+	wait_ms = COAP_RESOURCE_CHECK_TIME * 1000;
+
+	while (!quit_server) {
+		int result = coap_run_once(ctx, wait_ms);
+		if (result < 0) {
+			break;
+		}
+		else if ((unsigned)result < wait_ms) {
+			wait_ms -= result;
+		}
+		else {
+			if (time_resource) {
+				coap_resource_set_dirty(time_resource, NULL);
+			}
+			wait_ms = COAP_RESOURCE_CHECK_TIME * 1000;
+		}
+
+		/* check if we have to send asynchronous responses */
+		coap_ticks(&now);
+		check_async(ctx, now);
+		/* check if we have to send observe notifications */
+		coap_check_notify(ctx);
+	}
+
+	libcoap_close(ctx);
+
+	return (void*)0;
+}
+
 
 int main(int argc, char **argv){
 	// thread var
@@ -75,11 +102,11 @@ int main(int argc, char **argv){
 				// @@ calc new point
 				// nx = ?
 				// ny = ?
-
+				
 				// add new point
 
 				if(recv_dat.Fr > THRESHOLD) // #deifne THRESHOLD
-					pmiem[used].pushed = 1;
+					pmem[used].pushed = 1;
 				else
 					pmem[used].pushed = 0;
 
