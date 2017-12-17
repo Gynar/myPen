@@ -17,9 +17,9 @@ $(TARGET): $(OBJS)
 clean:
 	rm -f $(TARGET) $(OBJS)
 
-sketch.o: sketch.c
-coap_impl.o: coap_impl.c
-gpng_impl.o: gpng_impl.c
+sketch.o: tinypng.h gpng_impl.h coap_impl.h sketch.c
+#coap_impl.o: coap_impl.h coap_impl.c
+#gpng_impl.o: gpng_impl.h gpng_impl.c
 
 
 

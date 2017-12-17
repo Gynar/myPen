@@ -1,6 +1,5 @@
 #include "coap_impl.h"
 
-time_t clock_offset;
 time_t my_clock_base = 0;
 
 coap_async_state_t *async = NULL;
@@ -174,13 +173,13 @@ hnd_put_sensor(coap_context_t *ctx UNUSED_PARAM,
 			recv_dat.Gz = 0;
 			recv_dat.Fr = 0;
 			
-			Ax = (data[0] << 24) | (data[1]<<16) | (data[2]<<8) | data[3];
-			Ay = (data[4] << 24) | (data[5]<<16) | (data[6]<<8) | data[7];
-			Az = (data[8] << 24) | (data[9]<<16) | (data[10]<<8)| data[11];
-			Gx = (data[12]<< 24) | (data[13]<<16)| (data[14]<<8)| data[15];
-			Gy = (data[16]<< 24) | (data[17]<<16)| (data[18]<<8)| data[19];
-			Gz = (data[20]<< 24) | (data[21]<<16)| (data[22]<<8)| data[23];
-			Fr = (data[24]<< 24) | (data[25]<<16)| (data[26]<<8)| data[27];
+			recv_dat.Ax = (data[0] << 24) | (data[1]<<16) | (data[2]<<8) | data[3];
+			recv_dat.Ay = (data[4] << 24) | (data[5]<<16) | (data[6]<<8) | data[7];
+			recv_dat.Az = (data[8] << 24) | (data[9]<<16) | (data[10]<<8)| data[11];
+			recv_dat.Gx = (data[12]<< 24) | (data[13]<<16)| (data[14]<<8)| data[15];
+			recv_dat.Gy = (data[16]<< 24) | (data[17]<<16)| (data[18]<<8)| data[19];
+			recv_dat.Gz = (data[20]<< 24) | (data[21]<<16)| (data[22]<<8)| data[23];
+			recv_dat.Fr = (data[24]<< 24) | (data[25]<<16)| (data[26]<<8)| data[27];
 			
 			recv_dat.renewed = 1;
 		}
@@ -470,68 +469,5 @@ check_async(coap_context_t *ctx,
 	coap_remove_async(ctx, async->session, async->id, &tmp);
 	coap_free_async(async);
 	async = NULL;
-}
-
-coap_context_t*
-libcoap_open(void) {
-	char *group = NULL;
-	coap_tick_t now;
-	char addr_str[NI_MAXHOST] = "::";
-	char port_str[NI_MAXSERV] = "5683";
-	int opt;
-	coap_log_t log_level = LOG_WARNING;
-
-	clock_offset = time(NULL);
-
-	while ((opt = getopt(argc, argv, "A:g:p:v:l:")) != -1) {
-		switch (opt) {
-		case 'A':
-			strncpy(addr_str, optarg, NI_MAXHOST - 1);
-			addr_str[NI_MAXHOST - 1] = '\0';
-			break;
-		case 'g':
-			group = optarg;
-			break;
-		case 'p':
-			strncpy(port_str, optarg, NI_MAXSERV - 1);
-			port_str[NI_MAXSERV - 1] = '\0';
-			break;
-		case 'v':
-			log_level = strtol(optarg, NULL, 10);
-			break;
-		case 'l':
-			if (!coap_debug_set_packet_loss(optarg)) {
-				usage(argv[0], LIBCOAP_PACKAGE_VERSION);
-				exit(1);
-			}
-			break;
-		default:
-			usage(argv[0], LIBCOAP_PACKAGE_VERSION);
-			exit(1);
-		}
-	}
-
-	coap_startup();
-	coap_dtls_set_log_level(log_level);
-	coap_set_log_level(log_level);
-
-	ctx = get_context(addr_str, port_str);
-	if (!ctx)
-		return -1;
-
-	fill_keystore(ctx);
-	init_resources(ctx);
-
-	/* join multicast group if requested at command line */
-	if (group)
-		join(ctx, group);
-
-	return ctx;
-}
-
-void
-libcoap_close(coap_context_t* ctx) {
-	coap_free_context(ctx);
-	coap_cleanup();
 }
 

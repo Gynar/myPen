@@ -37,17 +37,40 @@ coap_server_service(void* arg) {
 		// for loopback test
 	char *group = NULL;
 	char* addr_arg = "127.0.0.1";
-	char* port_arg = "6";
+	char* log_arg = "6";
 
 	// required
+	char addr_str[NI_MAXHOST] = "::";
+	char port_str[NI_MAXSERV] = "5683";
 	coap_context_t* ctx;
 	coap_tick_t now;
 	unsigned wait_ms;
 
-	coap_log_t log_level = LOG_WARNING;
-	clock_offset = time(NULL):
+	// erase if you don't want lookback
+	strncpy(addr_str, addr_arg, NI_MAXHOST - 1);
+	addr_str[NI_MAXHOST - 1] = '\0';
+	//
 
-	ctx = libcoap_open();
+	coap_log_t log_level = LOG_WARNING;
+	// erase if you want default log level
+	// log_level = strtol(log_arg, NULL, 10);
+
+	clock_offset = time(NULL);
+
+	coap_startup();
+	coap_dtls_set_log_level(log_level);
+	coap_set_log_level(log_level);
+
+	ctx = get_context(addr_str, port_str);
+	if (!ctx)
+		return -1;
+
+	fill_keystore(ctx);
+	init_resources(ctx);
+
+	/* join multicast group if requested at command line */
+	if (group)
+		join(ctx, group);
 
 	wait_ms = COAP_RESOURCE_CHECK_TIME * 1000;
 
