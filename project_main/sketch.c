@@ -12,13 +12,14 @@
 #include <errno.h>
 #include <signal.h>
 #include <pthread.h>
-
+#include <math.h>
 #include "coap_impl.h"
 #include "gpng_impl.h"
 
 #define DEV_KTIMER "/dev/my_ktimer"
-
+#define DELTA 0.01f
 #define FR_THRESHOLD 300
+#define PI 3.14159265358979323846f
 
 typedef struct{
 	int x;
@@ -131,13 +132,13 @@ int main(int argc, char **argv){
 	unsigned int used;
 	unsigned int cap;
 	point_t* pmem;
-
-	fd_ktimer = open(DEV_KTIMER, O_RDWR);
-	if (fd_timer == NULL) {
-		printf("timer device open failed!\n");
-		printf("\t[tip] checkout whether ktimer module is loaded.\n");
-		return 0;
-	}
+	
+	//fd_ktimer = open(DEV_KTIMER, O_RDWR);
+	//if (fd_timer == NULL) {
+	//	printf("timer device open failed!\n");
+	//	printf("\t[tip] checkout whether ktimer module is loaded.\n");
+	//	return 0;
+	//}
 
 	while (!quit){
 		// init mem
@@ -149,16 +150,48 @@ int main(int argc, char **argv){
 		thr_id = pthread_create(&coap_server_thr, NULL, //&p_attr_detach_mode,
 			coap_server_service, NULL);
 
+		double v0 = 0;
+		timeout = 8192;
 		// wait connection
 		while(!con_established);
 		// connected, wait data
-		while(!timeout){ // @@ kernel timer
+		while(timeout--){ // @@ kernel timer
 			if(recv_dat.renewed){
-				int nx, ny;
+				recv_dat.renewed = 0;
 				// @@ calc new point
 				// nx = ?
 				// ny = ?
-				
+				int nx = 0, ny =0;
+				double gyroscope_sensitivity = 250/32768;
+				double aroll = 0, apitch = 0, ayaw = 0;
+				double roll, pitch, yaw;
+				double forceMagnitudeApprox = abs(recv_dat.Ax) + abs(recv_dat.Ay) + abs(recv_dat.Az);
+				double v1;
+				double v01;
+				double Acc;
+				double length;
+
+				pitch += (recv_dat.Gx/gyroscope_sensitivity)*DELTA;
+				roll -= (recv_dat.Gy/gyroscope_sensitivity)*DELTA;
+				yaw -= (recv_dat.Gz/gyroscope_sensitivity)*DELTA;
+				if(forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
+				{
+					apitch = atan2(recv_dat.Ay, recv_dat.Az) * 180/PI;
+					pitch = apitch * 0.98 + apitch * 0.5 * DELTA;
+					aroll = atan2(recv_dat.Ax, recv_dat.Az)* 180/PI;
+					roll = roll * 0.98 + aroll * 0.5*DELTA;
+					ayaw = atan2(recv_dat.Ax, recv_dat.Ay) * 180/PI;
+					yaw = yaw * 0.98 + ayaw * 0.5 * DELTA;
+				}
+				Acc = sqrt(recv_dat.Ax*recv_dat.Ax + recv_dat.Ay + recv_dat.Ay);
+				length = sqrt(nx * nx + ny * ny);
+				v1 = v0 + Acc*DELTA;
+				v01 = (v0 + v1)/2;
+
+				length = length + v01*(DELTA);
+				nx = (int)(length * cos(yaw));
+				ny = (int)(length * sin(yaw));
+
 				// add new point
 
 				if(recv_dat.Fr > FR_THRESHOLD) // #deifne THRESHOLD
@@ -173,6 +206,7 @@ int main(int argc, char **argv){
 					cap *= 2;
 					pmem = (point_t*)realloc(pmem, sizeof(point_t)*cap);
 				}
+				v0 = v1;
 			}
 		}
 

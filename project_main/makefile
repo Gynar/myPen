@@ -1,6 +1,6 @@
 .SUFFIXES: .c .o
 CC = gcc
-CXXFLAGS = -DWITH_POSIX -pthread
+CXXFLAGS = -DWITH_POSIX -pthread -lm
 
 LIBS = -lcoap-1
 INC = -I /usr/local/include/coap
