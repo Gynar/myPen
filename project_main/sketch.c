@@ -23,6 +23,13 @@ typedef struct{
 	int pushed;
 }point_t;
 
+// externs?
+recv_dat_t recv_dat;
+int con_established = 0;
+struct coap_resource_t *time_resource = NULL;
+time_t clock_offset;
+
+// 
 int quit;
 int quit_server;
 int timeout;
@@ -63,7 +70,7 @@ coap_server_service(void* arg) {
 
 	ctx = get_context(addr_str, port_str);
 	if (!ctx)
-		return -1;
+		return (void*)-1;
 
 	fill_keystore(ctx);
 	init_resources(ctx);

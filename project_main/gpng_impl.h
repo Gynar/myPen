@@ -10,7 +10,7 @@
 #include <sys/stat.h>	// lstat()
 #include <unistd.h>		// lstat(), getpwd()
 
-#define TINYPNG_IMPLEMENTATION
+//#define TINYPNG_IMPLEMENTATION
 #include "tinypng.h"
 
 #define STORAGE_DIR "./storage"
@@ -31,8 +31,6 @@ typedef struct {
 	unsigned int pX;
 	unsigned int pY;
 }tXY;
-
-char pwd_arg[100];
 
 //char* nstd_iota(int, char*, int);
 //int fnameCmp(const void*, const void*);

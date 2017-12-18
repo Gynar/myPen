@@ -1,5 +1,10 @@
 #include "coap_impl.h"
 
+extern recv_dat_t recv_dat;
+extern int con_established;
+extern struct coap_resource_t *time_resource;
+extern time_t clock_offset; 
+
 time_t my_clock_base = 0;
 
 coap_async_state_t *async = NULL;

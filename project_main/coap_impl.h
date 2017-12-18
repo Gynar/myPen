@@ -32,11 +32,6 @@ typedef struct {
 	int renewed;
 }recv_dat_t;
 
-extern recv_dat_t recv_dat;
-extern int con_established = 0;
-extern struct coap_resource_t *time_resource = NULL;
-extern time_t clock_offset; 
-
 void 
 	hnd_get_index(coap_context_t *ctx,
 		struct coap_resource_t *resource, 

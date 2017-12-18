@@ -66,8 +66,7 @@
 		Zachary Carter    1.01 - bug catch for tRNS chunk in paletted images
 */
 
-#if !defined( TINYPNG_H )
-
+#ifndef TINYPNG_H
 #ifdef _WIN32
 
 	#if !defined( _CRT_SECURE_NO_WARNINGS )

@@ -1,4 +1,7 @@
 #include "gpng_impl.h"
+#define TINYPNG_IMPLEMENTATION
+#include "tinypng.h"
+
 
 //char* nstd_itoa(int val, char * buf, int radix) {
 //	char* p = buf;
