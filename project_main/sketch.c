@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -14,6 +15,8 @@
 
 #include "coap_impl.h"
 #include "gpng_impl.h"
+
+#define DEV_KTIMER "/dev/my_ktimer"
 
 #define FR_THRESHOLD 300
 
@@ -121,10 +124,20 @@ int main(int argc, char **argv){
 	//pthread_attr_init(&p_attr_detach_mode);
 	//pthread_attr_setdetachstate(&p_attr_detach_mode, PTHREAD_CREATE_DETACHED);
 	
+	// ktimer
+	int fd_ktimer;
+
 	// usr program var
 	unsigned int used;
 	unsigned int cap;
 	point_t* pmem;
+
+	fd_ktimer = open(DEV_KTIMER, O_RDWR);
+	if (fd_timer == NULL) {
+		printf("timer device open failed!\n");
+		printf("\t[tip] checkout whether ktimer module is loaded.\n");
+		return 0;
+	}
 
 	while (!quit){
 		// init mem
