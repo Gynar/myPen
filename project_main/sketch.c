@@ -199,9 +199,9 @@ int main(int argc, char **argv){
 				double Acc;
 				double length;
 
-				pitch += (recv_dat.Gx/gyroscope_sensitivity)*DELTA;
-				roll -= (recv_dat.Gy/gyroscope_sensitivity)*DELTA;
-				yaw -= (recv_dat.Gz/gyroscope_sensitivity)*DELTA;
+				pitch += (recv_dat.Gx)*DELTA;
+				roll -= (recv_dat.Gy)*DELTA;
+				yaw -= (recv_dat.Gz)*DELTA;
 				if(forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
 				{
 					apitch = atan2(recv_dat.Ay, recv_dat.Az) * 180/PI;
@@ -343,11 +343,17 @@ int main(int argc, char **argv){
 		ptar_Pt = pmem;
 		ptar_PtN = pmem+1;
 		for(n = 1; n < used; n++){
+			/*
 			if(ptar_Pt->pushed){
 				tXY tA = {ptar_Pt->x, ptar_Pt->y};
 				tXY tB = {ptar_PtN->x, ptar_PtN->y};
 				drawLine(&my_surf, tA, tB);
 			}
+			*/
+			tXY tA = {ptar_Pt->x, ptar_Pt->y};
+			tXY tB = {ptar_PtN->x, ptar_PtN->y};
+			drawLine(&my_surf, tA, tB);
+
 			ptar_Pt = ptar_PtN++;
 			
 				// displaying processing percentage

@@ -13,7 +13,7 @@
 //#define TINYPNG_IMPLEMENTATION
 #include "tinypng.h"
 
-#define STORAGE_DIR "./storage"
+#define STORAGE_DIR "/home/pi/sto"
 #define FILE_NAME "new_file"
 #define DEFAULT_LEN 40
 #define PNG_DH 640
