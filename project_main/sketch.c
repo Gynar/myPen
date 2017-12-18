@@ -17,7 +17,7 @@
 #include "gpng_impl.h"
 
 #define DEV_KTIMER "/dev/my_ktimer"
-#define DELTA 0.01f
+#define DELTA 1
 #define FR_THRESHOLD 300
 #define PI 3.14159265358979323846f
 
@@ -67,8 +67,8 @@ coap_server_service(void* arg) {
 	unsigned wait_ms;
 
 	// erase if you don't want lookback
-	strncpy(addr_str, addr_arg, NI_MAXHOST - 1);
-	addr_str[NI_MAXHOST - 1] = '\0';
+	//strncpy(addr_str, addr_arg, NI_MAXHOST - 1);
+	//addr_str[NI_MAXHOST - 1] = '\0';
 	//
 
 	coap_log_t log_level = LOG_WARNING;
@@ -170,12 +170,13 @@ int main(int argc, char **argv){
 		else
 			printf("thread creation succeeded!\n");
 
+		double roll = 0, pitch = 0, yaw = 0;
 		double v0 = 0;
 		int i_cnt = 500;
 		timeout = 512;
 		// wait connection
-		//while(!con_established);
-			//printf("@");
+		while(!con_established);
+			printf("@");
 		// connected, wait data
 		while(timeout){ // @@ kernel timer
 			if(recv_dat.renewed){
@@ -185,13 +186,13 @@ int main(int argc, char **argv){
 					i_cnt -= 100;
 				}
 				recv_dat.renewed = 0;
+
 				// @@ calc new point
 				// nx = ?
 				// ny = ?
-				int nx = 0, ny =0;
+				int nx = pmem[used].x, ny = pmem[used].y;
 				double gyroscope_sensitivity = 250/32768;
 				double aroll = 0, apitch = 0, ayaw = 0;
-				double roll, pitch, yaw;
 				double forceMagnitudeApprox = abs(recv_dat.Ax) + abs(recv_dat.Ay) + abs(recv_dat.Az);
 				double v1;
 				double v01;
@@ -204,20 +205,20 @@ int main(int argc, char **argv){
 				if(forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
 				{
 					apitch = atan2(recv_dat.Ay, recv_dat.Az) * 180/PI;
-					pitch = apitch * 0.98 + apitch * 0.5 * DELTA;
+					pitch = pitch * 0.98 + apitch * 0.5 * DELTA;
 					aroll = atan2(recv_dat.Ax, recv_dat.Az)* 180/PI;
 					roll = roll * 0.98 + aroll * 0.5*DELTA;
 					ayaw = atan2(recv_dat.Ax, recv_dat.Ay) * 180/PI;
 					yaw = yaw * 0.98 + ayaw * 0.5 * DELTA;
 				}
-				Acc = sqrt(recv_dat.Ax*recv_dat.Ax + recv_dat.Ay + recv_dat.Ay);
+				Acc = sqrt(recv_dat.Ax*recv_dat.Ax + recv_dat.Ay*recv_dat.Ay);
 				length = sqrt(nx * nx + ny * ny);
 				v1 = v0 + Acc*DELTA;
 				v01 = (v0 + v1)/2;
 
 				length = length + v01*(DELTA);
-				nx = (int)(length * cos(yaw));
-				ny = (int)(length * sin(yaw));
+				nx += (int)(length * cos(yaw));
+				ny += (int)(length * sin(yaw));
 
 				// add new point
 
@@ -228,6 +229,18 @@ int main(int argc, char **argv){
 
 				pmem[used].x = nx;
 				pmem[used++].y = ny;
+				
+				printf("[received vars]\n");
+				printf("\tAx = %3.3f / Ay = %3.3f / Az = %3.3f\n", recv_dat.Ax, recv_dat.Ay, recv_dat.Az);
+				printf("\tGx = %3.3f / Gy = %3.3f / Gz = %3.3f\n", recv_dat.Gx, recv_dat.Gy, recv_dat.Gz);
+				printf("\tFr = %5d \n", recv_dat.Fr);
+				printf("[calculated vars]\n");
+				printf("\tforceMagnitudeApprox = %3.3f\n", forceMagnitudeApprox);
+				printf("\taroll = %3.3f / apitch = %3.3f / ayaw = %3.3f\n", aroll, apitch, ayaw);
+				printf("\troll = %3.3f / pitch = %3.3f / yaw = %3.3f\n", roll, pitch, yaw);
+				printf("\tv0 = %3.3f / v01 = %3.3f\n", v0, v01);
+				printf("\tAcc = %3.3f / length = %3.3f\n", Acc, length);
+				printf("\t(X,Y) : ( %5d, %5d )\n", nx, ny);
 
 				if(used >= cap){ // realloc
 					cap *= 2;
@@ -380,6 +393,8 @@ int main(int argc, char **argv){
 		// cloud upload
 		printf("preparing upload to google cloud... \n");
 
+		// @@@@@@@@@@@@@@@@@@@@@
+		quit = 1;
 	}
 
 

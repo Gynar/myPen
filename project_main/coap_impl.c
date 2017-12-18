@@ -1,5 +1,5 @@
 #include "coap_impl.h"
-
+#define FACTOR 100
 extern recv_dat_t recv_dat;
 extern int con_established;
 extern struct coap_resource_t *time_resource;
@@ -162,29 +162,39 @@ hnd_put_sensor(coap_context_t *ctx UNUSED_PARAM,
 	if(my_sensor_base == 0){
 		my_sensor_base = 1;
 		con_established = 1;
-		info("check1");
+		info("check1\n");
 	}
 	else{
 		if (size == 0) {
 			response->code = COAP_RESPONSE_CODE(400);
 		}
 		else {
-			recv_dat.Ax = 0;
-			recv_dat.Ay = 0;
-			recv_dat.Az = 0;
-			recv_dat.Gx = 0;
-			recv_dat.Gy = 0;
-			recv_dat.Gz = 0;
-			recv_dat.Fr = 0;
+			int tAx = 0;
+			int tAy = 0;
+			int tAz = 0;
+			int tGx = 0;
+			int tGy = 0;
+			int tGz = 0;
+			int tFr = 0;
+					
+			tAx = (data[0] << 24) | (data[1]<<16) | (data[2]<<8) | data[3];
+			tAy = (data[4] << 24) | (data[5]<<16) | (data[6]<<8) | data[7];
+			tAz = (data[8] << 24) | (data[9]<<16) | (data[10]<<8)| data[11];
+			tGx = (data[12]<< 24) | (data[13]<<16)| (data[14]<<8)| data[15];
+			tGy = (data[16]<< 24) | (data[17]<<16)| (data[18]<<8)| data[19];
+			tGz = (data[20]<< 24) | (data[21]<<16)| (data[22]<<8)| data[23];
+			tFr = (data[24]<< 24) | (data[25]<<16)| (data[26]<<8)| data[27];
 			
-			recv_dat.Ax = (data[0] << 24) | (data[1]<<16) | (data[2]<<8) | data[3];
-			recv_dat.Ay = (data[4] << 24) | (data[5]<<16) | (data[6]<<8) | data[7];
-			recv_dat.Az = (data[8] << 24) | (data[9]<<16) | (data[10]<<8)| data[11];
-			recv_dat.Gx = (data[12]<< 24) | (data[13]<<16)| (data[14]<<8)| data[15];
-			recv_dat.Gy = (data[16]<< 24) | (data[17]<<16)| (data[18]<<8)| data[19];
-			recv_dat.Gz = (data[20]<< 24) | (data[21]<<16)| (data[22]<<8)| data[23];
-			recv_dat.Fr = (data[24]<< 24) | (data[25]<<16)| (data[26]<<8)| data[27];
-			
+			info("Ax = %4d / Ay = %4d / Az = %4d \n Gx = %4d / Gy = %4d / Gz = %4d \n Fr = %4d\n", tAx, tAy, tAz, tGx, tGy, tGz, tFr);
+
+			recv_dat.Ax = (double)tAx / FACTOR;
+			recv_dat.Ay = (double)tAy / FACTOR;
+			recv_dat.Az = (double)tAz / FACTOR;
+			recv_dat.Gx = (double)tGx / FACTOR;
+			recv_dat.Gy = (double)tGy / FACTOR;
+			recv_dat.Gz = (double)tGz / FACTOR;
+			recv_dat.Fr = tFr;
+
 			recv_dat.renewed = 1;
 		}
 	}

@@ -22,12 +22,12 @@
               "Ref. Olaf Bergmann <bergmann@tzi.org>\n\n"
 
 typedef struct {
-	int Ax;
-	int Ay;
-	int Az;
-	int Gx;
-	int Gy;
-	int Gz;
+	double Ax;
+	double Ay;
+	double Az;
+	double Gx;
+	double Gy;
+	double Gz;
 	int Fr;
 	int renewed;
 }recv_dat_t;
