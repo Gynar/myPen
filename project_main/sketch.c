@@ -32,18 +32,27 @@ recv_dat_t recv_dat;
 int con_established = 0;
 struct coap_resource_t *time_resource = NULL;
 time_t clock_offset;
+time_t my_clock_base = 0;
+coap_async_state_t *async = NULL;
+int my_sensor_base = 0;
 
 // 
-int quit;
-int quit_server;
+int quit = 0;
+int quit_server = 0;
 int timeout;
 
+void
+	quit_signal(int sig);
 void*
 	coap_server_service(void* arg);
 
+void
+quit_signal(int sig){
+	quit = 1;
+}
 void*
 coap_server_service(void* arg) {
-	
+	printf("thread now on working\n");	
 	// optional
 		// for loopback test
 	char *group = NULL;
@@ -64,7 +73,7 @@ coap_server_service(void* arg) {
 
 	coap_log_t log_level = LOG_WARNING;
 	// erase if you want default log level
-	// log_level = strtol(log_arg, NULL, 10);
+	log_level = strtol(log_arg, NULL, 10);
 
 	clock_offset = time(NULL);
 
@@ -84,8 +93,9 @@ coap_server_service(void* arg) {
 		join(ctx, group);
 
 	wait_ms = COAP_RESOURCE_CHECK_TIME * 1000;
-
+	printf("coap_server ready to run!\n");
 	while (!quit_server) {
+		printf(".");
 		int result = coap_run_once(ctx, wait_ms);
 		if (result < 0) {
 			break;
@@ -106,6 +116,7 @@ coap_server_service(void* arg) {
 		/* check if we have to send observe notifications */
 		coap_check_notify(ctx);
 	}
+	printf("\ncoap server closing!\n");
 
 	coap_free_context(ctx);
 	coap_cleanup();
@@ -139,24 +150,40 @@ int main(int argc, char **argv){
 	//	printf("\t[tip] checkout whether ktimer module is loaded.\n");
 	//	return 0;
 	//}
-
+	printf("program will be started!\n");
+	//signal(SIGINT, quit_signal);
 	while (!quit){
 		// init mem
 		used = 1;
 		cap = 512;
 		pmem = (point_t*)malloc(sizeof(point_t)*cap);
-
+		printf("pmem allocated!\n");
 		// server thread start
 		thr_id = pthread_create(&coap_server_thr, NULL, //&p_attr_detach_mode,
 			coap_server_service, NULL);
+		
+
+		if(thr_id < 0){
+			printf("thread creation failed!\n");
+			exit(0);
+		}
+		else
+			printf("thread creation succeeded!\n");
 
 		double v0 = 0;
-		timeout = 8192;
+		int i_cnt = 500;
+		timeout = 512;
 		// wait connection
-		while(!con_established);
+		//while(!con_established);
+			//printf("@");
 		// connected, wait data
-		while(timeout--){ // @@ kernel timer
+		while(timeout){ // @@ kernel timer
 			if(recv_dat.renewed){
+				timeout--;
+				if(timeout <= i_cnt){
+					printf("timeout count : %d \n", timeout);
+					i_cnt -= 100;
+				}
 				recv_dat.renewed = 0;
 				// @@ calc new point
 				// nx = ?

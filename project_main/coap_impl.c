@@ -5,11 +5,9 @@ extern int con_established;
 extern struct coap_resource_t *time_resource;
 extern time_t clock_offset; 
 
-time_t my_clock_base = 0;
-
-coap_async_state_t *async = NULL;
-
-int my_sensor_base = 0;
+extern time_t my_clock_base;
+extern coap_async_state_t *async;
+extern int my_sensor_base;
 
 
 void
@@ -152,7 +150,7 @@ hnd_put_sensor(coap_context_t *ctx UNUSED_PARAM,
 	str *token UNUSED_PARAM,
 	str *query UNUSED_PARAM,
 	coap_pdu_t *response) {
-
+//	info("new data arrived\n");
 	size_t size;
 	unsigned char *data;
 
@@ -164,6 +162,7 @@ hnd_put_sensor(coap_context_t *ctx UNUSED_PARAM,
 	if(my_sensor_base == 0){
 		my_sensor_base = 1;
 		con_established = 1;
+		info("check1");
 	}
 	else{
 		if (size == 0) {
